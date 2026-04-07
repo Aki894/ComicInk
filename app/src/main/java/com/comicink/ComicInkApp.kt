@@ -1,6 +1,8 @@
 package com.comicink
 
 import android.app.Application
+import android.content.Context
+import androidx.multidex.MultiDex
 import org.conscrypt.Conscrypt
 import java.security.Security
 
@@ -8,8 +10,15 @@ import java.security.Security
  * ComicInk Application
  * - 初始化 Conscrypt 以支持 API 19 上的 TLS 1.2
  * - E-ink 模式默认开启
+ * - 支持 Multidex（API 19 必需）
  */
 class ComicInkApp : Application() {
+
+    override fun attachBaseContext(base: Context) {
+        // API 19 必须调用 MultiDex.install()
+        MultiDex.install(base)
+        super.attachBaseContext(base)
+    }
 
     override fun onCreate() {
         super.onCreate()
