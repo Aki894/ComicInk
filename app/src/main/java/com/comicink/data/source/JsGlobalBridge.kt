@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.Closeable
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -27,7 +28,7 @@ import java.nio.charset.StandardCharsets
 class JsGlobalBridge(
     private val context: Context,
     private val jsContext: JSContext
-) {
+) : Closeable {
     private val prefs by lazy {
         context.getSharedPreferences("js_source_data", Context.MODE_PRIVATE)
     }
@@ -307,5 +308,10 @@ class JsGlobalBridge(
             result
         }
         jsContext.set("deleteData", deleteDataFunction)
+    }
+
+    override fun close() {
+        // 清理资源
+        prefs.edit().clear().apply()
     }
 }

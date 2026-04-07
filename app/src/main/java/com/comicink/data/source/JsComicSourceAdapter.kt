@@ -6,6 +6,7 @@ import com.comicink.data.model.ChapterImages
 import com.comicink.data.model.Comic
 import com.comicink.data.model.ComicDetails
 import com.comicink.data.model.SearchResult
+import com.quickjs.JSContext
 import com.quickjs.JSObject
 import com.quickjs.JSValue
 import com.google.gson.Gson
@@ -27,6 +28,45 @@ class JsComicSourceAdapter(
 ) {
     private val gson = Gson()
 
+    companion object {
+        private val EMPTY_OPTIONS: Map<String, Any> = emptyMap()
+    }
+
+    /**
+     * 在 JS 上下文中执行代码的公共方法
+     * 处理创建 context、注册 bridge、加载源文件的重复逻辑
+     *
+     * @param block 在 JS 上下文中执行的代码块
+     * @return 执行结果
+     */
+    private suspend fun <T> executeInJsContext(block: (JSContext) -> T): T = withContext(Dispatchers.IO) {
+        val closeableContext = engineBridge.createContext()
+        closeableContext.use { jsContext ->
+            // 注册全局 API
+            val globalBridge = JsGlobalBridge(context, jsContext)
+            globalBridge.use {
+                it.registerGlobalApis()
+
+                // 加载源文件
+                try {
+                    val sourceCode = sourceManager.getSourceContent(sourceKey)
+                    engineBridge.evaluate(jsContext, sourceCode, "$sourceKey.js")
+                } catch (e: Exception) {
+                    throw JsSourceException.SourceNotFound(sourceKey)
+                }
+
+                // 执行用户代码
+                try {
+                    block(jsContext)
+                } catch (e: JsSourceException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw JsSourceException.ScriptError(e.message ?: "Unknown error", e.stackTrace.toString())
+                }
+            }
+        }
+    }
+
     /**
      * 搜索漫画
      * 调用 JS 源的 search.load(keyword, options, page) 方法
@@ -35,26 +75,22 @@ class JsComicSourceAdapter(
      * @param page 页码，默认为 1
      * @return SearchResult 搜索结果
      */
-    suspend fun search(keyword: String, page: Int = 1): SearchResult = withContext(Dispatchers.IO) {
-        val closeableContext = engineBridge.createContext()
-        closeableContext.use { jsContext ->
-            // 注册全局 API
-            val globalBridge = JsGlobalBridge(context, jsContext)
-            globalBridge.registerGlobalApis()
+    suspend fun search(keyword: String, page: Int = 1): SearchResult {
+        val escapedKeyword = keyword.replace("'", "\\'")
+        val options = gson.toJson(EMPTY_OPTIONS)
+        val jsCode = "search.load('$escapedKeyword', $options, $page)"
 
-            // 加载源文件
-            val sourceCode = sourceManager.getSourceContent(sourceKey)
-            engineBridge.evaluate(jsContext, sourceCode, "$sourceKey.js")
-
-            // 构建调用代码并执行
-            val escapedKeyword = keyword.replace("'", "\\'")
-            val options = gson.toJson(emptyMap<String, Any>())
-            val jsCode = "search.load('$escapedKeyword', $options, $page)"
-            val resultValue = engineBridge.evaluate(jsContext, jsCode, "search.js")
-            val result = resultValue as? JSObject
-                ?: throw JsSourceException.ScriptError("search.load did not return an object", null)
-
-            parseSearchResult(result)
+        return executeInJsContext { jsContext ->
+            try {
+                val resultValue = engineBridge.evaluate(jsContext, jsCode, "search.js")
+                val result = resultValue as? JSObject
+                    ?: throw JsSourceException.ScriptError("search.load did not return an object", null)
+                parseSearchResult(result)
+            } catch (e: JsSourceException) {
+                throw e
+            } catch (e: Exception) {
+                throw JsSourceException.ScriptError("search failed: ${e.message}", e.stackTrace.toString())
+            }
         }
     }
 
@@ -65,25 +101,21 @@ class JsComicSourceAdapter(
      * @param comicId 漫画 ID
      * @return ComicDetails 漫画详情
      */
-    suspend fun getComicInfo(comicId: String): ComicDetails = withContext(Dispatchers.IO) {
-        val closeableContext = engineBridge.createContext()
-        closeableContext.use { jsContext ->
-            // 注册全局 API
-            val globalBridge = JsGlobalBridge(context, jsContext)
-            globalBridge.registerGlobalApis()
+    suspend fun getComicInfo(comicId: String): ComicDetails {
+        val escapedId = comicId.replace("'", "\\'")
+        val jsCode = "comic.loadInfo('$escapedId')"
 
-            // 加载源文件
-            val sourceCode = sourceManager.getSourceContent(sourceKey)
-            engineBridge.evaluate(jsContext, sourceCode, "$sourceKey.js")
-
-            // 构建调用代码并执行
-            val escapedId = comicId.replace("'", "\\'")
-            val jsCode = "comic.loadInfo('$escapedId')"
-            val resultValue = engineBridge.evaluate(jsContext, jsCode, "comic_info.js")
-            val result = resultValue as? JSObject
-                ?: throw JsSourceException.ScriptError("comic.loadInfo did not return an object", null)
-
-            parseComicDetails(result)
+        return executeInJsContext { jsContext ->
+            try {
+                val resultValue = engineBridge.evaluate(jsContext, jsCode, "comic_info.js")
+                val result = resultValue as? JSObject
+                    ?: throw JsSourceException.ScriptError("comic.loadInfo did not return an object", null)
+                parseComicDetails(result)
+            } catch (e: JsSourceException) {
+                throw e
+            } catch (e: Exception) {
+                throw JsSourceException.ScriptError("getComicInfo failed: ${e.message}", e.stackTrace.toString())
+            }
         }
     }
 
@@ -95,26 +127,22 @@ class JsComicSourceAdapter(
      * @param chapterId 章节 ID
      * @return ChapterImages 章节图片列表
      */
-    suspend fun getChapterImages(comicId: String, chapterId: String): ChapterImages = withContext(Dispatchers.IO) {
-        val closeableContext = engineBridge.createContext()
-        closeableContext.use { jsContext ->
-            // 注册全局 API
-            val globalBridge = JsGlobalBridge(context, jsContext)
-            globalBridge.registerGlobalApis()
+    suspend fun getChapterImages(comicId: String, chapterId: String): ChapterImages {
+        val escapedComicId = comicId.replace("'", "\\'")
+        val escapedChapterId = chapterId.replace("'", "\\'")
+        val jsCode = "comic.loadEp('$escapedComicId', '$escapedChapterId')"
 
-            // 加载源文件
-            val sourceCode = sourceManager.getSourceContent(sourceKey)
-            engineBridge.evaluate(jsContext, sourceCode, "$sourceKey.js")
-
-            // 构建调用代码并执行
-            val escapedComicId = comicId.replace("'", "\\'")
-            val escapedChapterId = chapterId.replace("'", "\\'")
-            val jsCode = "comic.loadEp('$escapedComicId', '$escapedChapterId')"
-            val resultValue = engineBridge.evaluate(jsContext, jsCode, "chapter_images.js")
-            val result = resultValue as? JSObject
-                ?: throw JsSourceException.ScriptError("comic.loadEp did not return an object", null)
-
-            parseChapterImages(result, chapterId)
+        return executeInJsContext { jsContext ->
+            try {
+                val resultValue = engineBridge.evaluate(jsContext, jsCode, "chapter_images.js")
+                val result = resultValue as? JSObject
+                    ?: throw JsSourceException.ScriptError("comic.loadEp did not return an object", null)
+                parseChapterImages(result, chapterId)
+            } catch (e: JsSourceException) {
+                throw e
+            } catch (e: Exception) {
+                throw JsSourceException.ScriptError("getChapterImages failed: ${e.message}", e.stackTrace.toString())
+            }
         }
     }
 

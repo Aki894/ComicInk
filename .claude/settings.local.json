@@ -20,7 +20,10 @@
       "Bash(jar tf:*)",
       "Bash(xargs -I {} sh -c 'unzip -p classes.jar {} 2>/dev/null | strings | grep -E \"public.*method|public.*evaluate|public.*getProperty\" | head -5')",
       "Bash(javap -cp classes.jar com.quickjs.JSContext)",
-      "Bash(unzip -o classes.jar -d classes)"
+      "Bash(unzip -o classes.jar -d classes)",
+      "Bash(xxd app/src/main/*)",
+      "Bash(git status)",
+      "Bash(xxd:*)"
     ]
   }
 }
