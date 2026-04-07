@@ -11,6 +11,9 @@ class Jm18cSource extends ComicSource {
   minAppVersion = "1.0.0";
   url = "https://jm18c.com";
 
+  // 提取 User-Agent 为类属性
+  USER_AGENT = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36";
+
   // 搜索功能
   search = {
     load: async (keyword, options, page) => {
@@ -21,7 +24,7 @@ class Jm18cSource extends ComicSource {
 
         // 发送搜索请求
         const res = await Network.get(searchUrl, {
-          "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
+          "User-Agent": this.USER_AGENT,
           "Accept": "application/json, text/html",
           "Referer": "https://jm18c.com/"
         });
@@ -37,9 +40,12 @@ class Jm18cSource extends ComicSource {
         // 解析搜索结果
         const comics = this.parseSearchResults(res.body);
 
+        // 从响应中解析 maxPage
+        const maxPage = this.parseMaxPage(res.body);
+
         return {
           comics: comics,
-          maxPage: 10,
+          maxPage: maxPage,
           currentPage: page
         };
       } catch (e) {
@@ -60,7 +66,7 @@ class Jm18cSource extends ComicSource {
       try {
         const detailUrl = `https://jm18c.com/comic/${id}`;
         const res = await Network.get(detailUrl, {
-          "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
+          "User-Agent": this.USER_AGENT,
           "Accept": "application/json, text/html",
           "Referer": "https://jm18c.com/"
         });
@@ -97,7 +103,7 @@ class Jm18cSource extends ComicSource {
       try {
         const epUrl = `https://jm18c.com/ep/${comicId}/${epId}`;
         const res = await Network.get(epUrl, {
-          "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36",
+          "User-Agent": this.USER_AGENT,
           "Accept": "application/json, text/html",
           "Referer": `https://jm18c.com/comic/${comicId}`
         });
@@ -153,6 +159,40 @@ class Jm18cSource extends ComicSource {
 
     // 返回空数组（实际需要根据网站 HTML 结构实现）
     return [];
+  }
+
+  /**
+   * 解析 maxPage 分页信息
+   * 从 API 响应中提取总页数
+   * @param {string} body - 响应内容
+   * @returns {number} maxPage，如果没有数据默认返回 1
+   */
+  parseMaxPage(body) {
+    try {
+      const data = JSON.parse(body);
+      // 尝试从多种可能的字段名中获取 maxPage
+      if (data.maxPage) {
+        return typeof data.maxPage === 'number' ? data.maxPage : parseInt(data.maxPage, 10) || 1;
+      }
+      if (data.totalPages) {
+        return typeof data.totalPages === 'number' ? data.totalPages : parseInt(data.totalPages, 10) || 1;
+      }
+      if (data.pageCount) {
+        return typeof data.pageCount === 'number' ? data.pageCount : parseInt(data.pageCount, 10) || 1;
+      }
+      if (data.total) {
+        // 如果有总数和每页数量，计算总页数
+        const pageSize = data.pageSize || 20;
+        return Math.ceil(data.total / pageSize) || 1;
+      }
+      if (data.pages && Array.isArray(data.pages)) {
+        return data.pages.length || 1;
+      }
+    } catch (e) {
+      console.log("Failed to parse maxPage:", e);
+    }
+    // 默认返回 1
+    return 1;
   }
 
   /**
