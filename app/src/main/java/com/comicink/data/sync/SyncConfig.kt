@@ -54,12 +54,29 @@ class SyncConfig(context: Context) {
     }
 
     /**
-     * 保存配置 */
+     * 保存配置（原子操作）
+     * @throws IllegalArgumentException 当 URL 格式无效或用户名为空时
+     */
     fun save(url: String, username: String, password: String) {
-        this.webDavUrl = url
-        this.username = username
-        this.password = password
-        this.isEnabled = true
+        // 参数校验
+        require(url.isNotBlank()) { "URL cannot be blank" }
+        require(username.isNotBlank()) { "Username cannot be blank" }
+        require(isValidUrl(url)) { "Invalid URL format" }
+
+        // 使用单次 edit() 保证原子性
+        prefs.edit()
+            .putString(KEY_URL, url)
+            .putString(KEY_USERNAME, username)
+            .putString(KEY_PASSWORD, password)
+            .putBoolean(KEY_ENABLED, true)
+            .apply()
+    }
+
+    /**
+     * 简单验证 URL 格式
+     */
+    private fun isValidUrl(url: String): Boolean {
+        return url.startsWith("http://") || url.startsWith("https://")
     }
 
     /**
