@@ -6,11 +6,18 @@ import com.quickjs.JSContext
 import com.quickjs.JSFunction
 import com.quickjs.JSObject
 import com.quickjs.JSValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
+import java.net.MalformedURLException
+import java.net.SocketTimeoutException
 import java.net.URL
+import java.net.UnknownHostException
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
 /**
@@ -34,9 +41,30 @@ class JsGlobalBridge(
     }
 
     /**
+     * 从 Content-Type header 中提取字符集
+     */
+    private fun getCharsetFromContentType(contentType: String?): Charset {
+        if (contentType == null) return StandardCharsets.UTF_8
+        val regex = """charset=([^;\s]+)""".toRegex(RegexOption.IGNORE_CASE)
+        val match = regex.find(contentType)
+        return try {
+            match?.groupValues?.get(1)?.let { Charset.forName(it) } ?: StandardCharsets.UTF_8
+        } catch (e: Exception) {
+            StandardCharsets.UTF_8
+        }
+    }
+
+    /**
+     * 从响应头中获取 Content-Type
+     */
+    private fun getContentType(connection: HttpURLConnection): String? {
+        return connection.getHeaderField("Content-Type")
+    }
+
+    /**
      * 注册 Network API
-     * - Network.get(url, headers) -> { status, body, headers }
-     * - Network.post(url, headers, body) -> { status, body, headers }
+     * - Network.get(url, headers) -> { status, body, headers, error }
+     * - Network.post(url, headers, body) -> { status, body, headers, error }
      */
     private fun registerNetworkApi() {
         val networkObj = JSObject(jsContext)
@@ -46,7 +74,10 @@ class JsGlobalBridge(
             val url = args.getString(0) ?: throw IllegalArgumentException("url is required")
             val headers = args.getObject(1)
 
-            val result = executeHttpRequest("GET", url, headers, null)
+            // 使用 runBlocking 在 IO 线程执行网络请求
+            val result = runBlocking(Dispatchers.IO) {
+                executeHttpRequest("GET", url, headers, null)
+            }
             mapToJSObject(result)
         }
         networkObj.set("get", getFunction)
@@ -57,7 +88,10 @@ class JsGlobalBridge(
             val headers = args.getObject(1)
             val body = args.getString(2)
 
-            val result = executeHttpRequest("POST", url, headers, body)
+            // 使用 runBlocking 在 IO 线程执行网络请求
+            val result = runBlocking(Dispatchers.IO) {
+                executeHttpRequest("POST", url, headers, body)
+            }
             mapToJSObject(result)
         }
         networkObj.set("post", postFunction)
@@ -106,14 +140,15 @@ class JsGlobalBridge(
     }
 
     /**
-     * 执行 HTTP 请求
+     * 执行 HTTP 请求（在 IO 线程执行）
+     * 返回包含 status, body, headers, error 的 Map
      */
-    private fun executeHttpRequest(
+    private suspend fun executeHttpRequest(
         method: String,
         url: String,
         headers: JSObject?,
         body: String?
-    ): Map<String, Any> {
+    ): Map<String, Any> = withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
         try {
             val parsedUrl = URL(url)
@@ -125,7 +160,7 @@ class JsGlobalBridge(
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Accept", "application/json")
 
-            // 设置自定义 headers - 使用 getKeys() 代替 keySet()
+            // 设置自定义 headers
             if (headers != null) {
                 val keys = headers.getKeys()
                 for (key in keys) {
@@ -155,31 +190,69 @@ class JsGlobalBridge(
                 }
             }
 
+            // 从 Content-Type 获取字符集
+            val charset = getCharsetFromContentType(getContentType(connection))
+
             // 读取响应体
             val responseBody = if (responseCode in 200..299) {
                 connection.inputStream?.let { inputStream ->
-                    BufferedReader(InputStreamReader(inputStream, StandardCharsets.UTF_8)).use { reader ->
+                    BufferedReader(InputStreamReader(inputStream, charset)).use { reader ->
                         reader.readText()
                     }
                 } ?: ""
             } else {
                 connection.errorStream?.let { errorStream ->
-                    BufferedReader(InputStreamReader(errorStream, StandardCharsets.UTF_8)).use { reader ->
+                    BufferedReader(InputStreamReader(errorStream, charset)).use { reader ->
                         reader.readText()
                     }
                 } ?: ""
             }
 
-            return mapOf(
+            mapOf(
                 "status" to responseCode,
                 "body" to responseBody,
-                "headers" to responseHeaders
+                "headers" to responseHeaders,
+                "error" to ""
+            )
+        } catch (e: UnknownHostException) {
+            // 网络不可达/DNS 解析失败
+            mapOf(
+                "status" to -1,
+                "body" to "",
+                "headers" to emptyMap<String, String>(),
+                "error" to "Network unreachable: ${e.message}"
+            )
+        } catch (e: SocketTimeoutException) {
+            // 连接超时或读取超时
+            mapOf(
+                "status" to -2,
+                "body" to "",
+                "headers" to emptyMap<String, String>(),
+                "error" to "Request timeout: ${e.message}"
+            )
+        } catch (e: MalformedURLException) {
+            // URL 格式错误
+            mapOf(
+                "status" to -3,
+                "body" to "",
+                "headers" to emptyMap<String, String>(),
+                "error" to "Invalid URL: ${e.message}"
+            )
+        } catch (e: java.io.IOException) {
+            // 其他 IO 错误（网络中断、连接被拒绝等）
+            mapOf(
+                "status" to -4,
+                "body" to "",
+                "headers" to emptyMap<String, String>(),
+                "error" to "Network error: ${e.message}"
             )
         } catch (e: Exception) {
-            return mapOf(
-                "status" to -1,
-                "body" to (e.message ?: "Unknown error"),
-                "headers" to emptyMap<String, String>()
+            // 其他未知错误
+            mapOf(
+                "status" to -99,
+                "body" to "",
+                "headers" to emptyMap<String, String>(),
+                "error" to "Unknown error: ${e.message}"
             )
         } finally {
             connection?.disconnect()

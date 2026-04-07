@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ComicInk</string>
+
+    <!-- E-ink 模式 -->
+    <string name="eink_mode">E-ink 模式</string>
+    <string name="normal_mode">普通模式</string>
+
+    <!-- 菜单 -->
+    <string name="menu_sources">漫画源</string>
+    <string name="menu_favorites">收藏</string>
+    <string name="menu_history">历史</string>
+    <string name="menu_settings">设置</string>
+
+    <!-- 漫画源 -->
+    <string name="add_source">添加源</string>
+    <string name="source_url">源 URL</string>
+    <string name="loading">加载中…</string>
+    <string name="error_network">网络错误</string>
+    <string name="error_load_failed">加载失败</string>
+
+    <!-- 阅读 -->
+    <string name="chapter_list">章节列表</string>
+    <string name="page_format">%d / %d</string>
+</resources>

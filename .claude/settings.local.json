@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:square.github.io)",
+      "Bash(xxd)",
+      "Bash(java:*)",
+      "Bash(gradle:*)",
+      "Bash(choco install:*)",
+      "Bash(curl:*)",
+      "Bash(.\\\\gradlew.bat assembleDebug --stacktrace)",
+      "Bash(cmd /c \"gradlew.bat assembleDebug\")",
+      "Bash(cmd:*)",
+      "Bash(C:\\\\Documents\\\\code\\\\ComicInk\\\\gradlew.bat:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "WebFetch(domain:search.maven.org)",
+      "Bash(./gradlew app:dependencies --configuration debugRuntimeClasspath)",
+      "Read(//tmp/**)",
+      "Bash(jar tf:*)",
+      "Bash(xargs -I {} sh -c 'unzip -p classes.jar {} 2>/dev/null | strings | grep -E \"public.*method|public.*evaluate|public.*getProperty\" | head -5')",
+      "Bash(javap -cp classes.jar com.quickjs.JSContext)",
+      "Bash(unzip -o classes.jar -d classes)"
+    ]
+  }
+}

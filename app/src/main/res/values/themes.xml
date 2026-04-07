@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 基础主题 -->
+    <style name="Theme.ComicInk" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorPrimaryDark">@color/black</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:windowBackground">@color/normal_background</item>
+    </style>
+
+    <!-- E-ink 模式：纯黑白、高对比、无动画 -->
+    <style name="Theme.ComicInk.EInk" parent="Theme.ComicInk">
+        <item name="android:windowBackground">@color/eink_background</item>
+        <item name="android:textColorPrimary">@color/eink_text_primary</item>
+        <item name="android:textColorSecondary">@color/eink_text_secondary</item>
+        <item name="android:colorBackground">@color/eink_background</item>
+
+        <!-- 禁用所有动画 -->
+        <item name="android:windowAnimationStyle">@style/Animation.NoAnimation</item>
+    </style>
+
+    <!-- 基础动画定义 -->
+    <style name="Animation.NoAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:activityOpenExitAnimation">@android:anim/fade_out</item>
+        <item name="android:activityCloseEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:activityCloseExitAnimation">@android:anim/fade_out</item>
+    </style>
+
+    <!-- E-ink 文字样式：加粗 -->
+    <style name="TextAppearance.ComicInk.EInk.Title" parent="TextAppearance.AppCompat.Title">
+        <item name="android:textColor">@color/eink_text_primary</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.ComicInk.EInk.Body" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textColor">@color/eink_text_primary</item>
+    </style>
+
+</resources>
