@@ -8,6 +8,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.comicink.R
 import com.comicink.data.sync.SyncConfig
@@ -133,17 +134,18 @@ class SettingsActivity : AppCompatActivity() {
                     btnTest.isEnabled = true
                     if (result.isSuccess) {
                         tvTestStatus.text = "连接成功 ✓"
-                        tvTestStatus.setTextColor(getColor(R.color.eink_text_primary))
+                        // 使用 ContextCompat 兼容 API 19
+                        tvTestStatus.setTextColor(ContextCompat.getColor(this@SettingsActivity, R.color.eink_text_primary))
                     } else {
                         val errorMsg = result.exceptionOrNull()?.message ?: "未知错误"
                         tvTestStatus.text = "连接失败: $errorMsg"
-                        tvTestStatus.setTextColor(getColor(android.R.color.holo_red_light))
+                        tvTestStatus.setTextColor(ContextCompat.getColor(this@SettingsActivity, android.R.color.holo_red_light))
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Test connection error", e)
                     btnTest.isEnabled = true
                     tvTestStatus.text = "连接失败: ${e.message}"
-                    tvTestStatus.setTextColor(getColor(android.R.color.holo_red_light))
+                    tvTestStatus.setTextColor(ContextCompat.getColor(this@SettingsActivity, android.R.color.holo_red_light))
                 }
             }
         }

@@ -136,27 +136,79 @@ class JsSourceManager(private val context: Context) {
 
     /**
      * 解析源文件中的元数据
-     * 元数据格式：/* {...} */
-    * @param content 源文件内容
-     * @param fileName 文件名（用于错误信息）
-     * @return 解析后的元数据，如果解析失败返回 null
+     * 支持两种格式：
+     * 1. /* {...} */ 格式的元数据注释
+     * 2. class XXX extends ComicSource { name = "..."; key = "..."; }
      */
     private fun parseMetadata(content: String, fileName: String): SourceMetadata? {
-        // 匹配 /* {...} */ 格式的元数据注释
-        val regex = "/\\*\\{([\\s\\S]*?)}\\*/"
-        val pattern = Regex(regex)
-        val match = pattern.find(content)
-
-        if (match == null) {
-            Log.w(TAG, "No metadata found in $fileName")
-            return null
+        // 方式1: 尝试匹配 /* {...} */ 格式
+        try {
+            val commentRegex = """/\*\{([\s\S]*?)\}\*/"""
+            val commentMatch = Regex(commentRegex).find(content)
+            if (commentMatch != null) {
+                val metadataJson = commentMatch.groupValues.getOrNull(1)
+                if (metadataJson != null) {
+                    return parseFromJson(metadataJson, fileName)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Comment format parse failed for: $fileName")
         }
 
-        val metadataJson = match.groupValues.getOrNull(1) ?: run {
-            Log.w(TAG, "Failed to extract metadata JSON from: $fileName")
-            return null
+        // 方式2: 尝试匹配 class 格式
+        try {
+            // 提取 class 后面的类名作为 key
+            val classRegex = """class\s+(\w+)\s+extends\s+ComicSource\s*\{"""
+            val classMatch = Regex(classRegex).find(content)
+            val className = classMatch?.groupValues?.getOrNull(1) ?: fileName.removeSuffix(".js")
+
+            // 提取属性值
+            val name = extractProperty(content, "name") ?: className
+            val key = extractProperty(content, "key") ?: className.lowercase()
+            val version = extractProperty(content, "version") ?: "1.0.0"
+            val minAppVersion = extractProperty(content, "minAppVersion") ?: "1.0.0"
+
+            if (key.isNotBlank()) {
+                Log.d(TAG, "Parsed class format: key=$key, name=$name, version=$version")
+                return SourceMetadata(
+                    name = name,
+                    key = key,
+                    version = version,
+                    minAppVersion = minAppVersion
+                )
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Class format parse failed for: $fileName", e)
         }
 
+        Log.w(TAG, "No metadata found in $fileName")
+        return null
+    }
+
+    /**
+     * 从源码中提取属性值
+     */
+    private fun extractProperty(content: String, propertyName: String): String? {
+        // 匹配 propertyName = "value" 或 propertyName = 'value' 或 propertyName = 1.0.0
+        val patterns = listOf(
+            """$propertyName\s*=\s*"([^"]*)"""".toRegex(),
+            """$propertyName\s*=\s*'([^']*)'""".toRegex(),
+            """$propertyName\s*=\s*(\d+\.\d+\.\d+)""".toRegex()
+        )
+
+        for (pattern in patterns) {
+            val match = pattern.find(content)
+            if (match != null) {
+                return match.groupValues.getOrNull(1)
+            }
+        }
+        return null
+    }
+
+    /**
+     * 从 JSON 字符串解析元数据
+     */
+    private fun parseFromJson(metadataJson: String, fileName: String): SourceMetadata? {
         return try {
             val json = JSONObject(metadataJson)
 
