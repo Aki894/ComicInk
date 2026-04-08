@@ -1,6 +1,7 @@
 package com.comicink.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -26,6 +27,10 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvWebDavStatus: TextView
     private lateinit var tvThemeStatus: TextView
     private lateinit var tvVersion: TextView
+
+    companion object {
+        private const val TAG = "SettingsActivity"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         overridePendingTransition(0, 0)
@@ -120,16 +125,24 @@ class SettingsActivity : AppCompatActivity() {
             syncConfig.save(url, username, password)
 
             lifecycleScope.launch {
-                val result = withContext(Dispatchers.IO) {
-                    syncManager.testConnection()
-                }
+                try {
+                    val result = withContext(Dispatchers.IO) {
+                        syncManager.testConnection()
+                    }
 
-                btnTest.isEnabled = true
-                if (result.isSuccess) {
-                    tvTestStatus.text = "连接成功 ✓"
-                    tvTestStatus.setTextColor(getColor(R.color.eink_text_primary))
-                } else {
-                    tvTestStatus.text = "连接失败: ${result.exceptionOrNull()?.message}"
+                    btnTest.isEnabled = true
+                    if (result.isSuccess) {
+                        tvTestStatus.text = "连接成功 ✓"
+                        tvTestStatus.setTextColor(getColor(R.color.eink_text_primary))
+                    } else {
+                        val errorMsg = result.exceptionOrNull()?.message ?: "未知错误"
+                        tvTestStatus.text = "连接失败: $errorMsg"
+                        tvTestStatus.setTextColor(getColor(android.R.color.holo_red_light))
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Test connection error", e)
+                    btnTest.isEnabled = true
+                    tvTestStatus.text = "连接失败: ${e.message}"
                     tvTestStatus.setTextColor(getColor(android.R.color.holo_red_light))
                 }
             }
