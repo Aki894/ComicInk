@@ -23,7 +23,21 @@
       "Bash(unzip -o classes.jar -d classes)",
       "Bash(xxd app/src/main/*)",
       "Bash(git status)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(./gradlew :app:compileDebugKotlin --no-daemon)",
+      "mcp__plugin_context7_context7__query-docs",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:jitpack.io)",
+      "WebFetch(domain:javadoc.io)",
+      "WebFetch(domain:www.programcreek.com)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(./gradlew :app:compileDebugKotlin:*)",
+      "Bash(ls -la *.gradle*)",
+      "Bash(ls -la gradle*)",
+      "Bash(./gradlew.bat :app:compileDebugKotlin:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
