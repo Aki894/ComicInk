@@ -85,6 +85,41 @@
 
         </LinearLayout>
 
+        <!-- 漫画源管理 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="漫画源"
+            android:textColor="@color/eink_text_secondary"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/llSourceManage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="?attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="源管理"
+                android:textColor="@color/eink_text_primary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tvSourceCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="33 个源"
+                android:textColor="@color/eink_text_secondary"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
         <!-- 主题设置 -->
         <TextView
             android:layout_width="match_parent"

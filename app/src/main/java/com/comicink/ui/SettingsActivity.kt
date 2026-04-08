@@ -1,5 +1,6 @@
 package com.comicink.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -28,6 +29,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvWebDavStatus: TextView
     private lateinit var tvThemeStatus: TextView
     private lateinit var tvVersion: TextView
+    private lateinit var tvSourceCount: TextView
 
     companion object {
         private const val TAG = "SettingsActivity"
@@ -63,6 +65,16 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.llTheme).setOnClickListener {
             toggleTheme()
         }
+
+        // 源管理
+        tvSourceCount = findViewById(R.id.tvSourceCount)
+        findViewById<LinearLayout>(R.id.llSourceManage).setOnClickListener {
+            startActivity(Intent(this, SourceManagerActivity::class.java))
+            overridePendingTransition(0, 0)
+        }
+
+        // 更新源数量
+        updateSourceCount()
 
         // 版本信息
         tvVersion = findViewById(R.id.tvVersion)
@@ -180,6 +192,15 @@ class SettingsActivity : AppCompatActivity() {
 
         Toast.makeText(this, "主题切换将在下次启动生效", Toast.LENGTH_SHORT).show()
         updateStatus()
+    }
+
+    private fun updateSourceCount() {
+        // 读取启用的源数量
+        val prefs = getSharedPreferences("source_settings", MODE_PRIVATE)
+        val allPrefs = prefs.all
+        val enabledCount = allPrefs.values.count { it == true }
+        val totalCount = allPrefs.size
+        tvSourceCount.text = "$enabledCount/$totalCount 个源"
     }
 
     override fun onPause() {

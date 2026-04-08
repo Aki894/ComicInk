@@ -39,6 +39,12 @@
             android:exported="true"
             android:theme="@style/Theme.ComicInk.EInk" />
 
+        <!-- 源管理 Activity -->
+        <activity
+            android:name=".ui.SourceManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ComicInk.EInk" />
+
     </application>
 
 </manifest>
