@@ -33,6 +33,11 @@
             android:name=".ui.ReaderActivity"
             android:theme="@style/Theme.ComicInk.EInk" />
 
+        <!-- 设置 Activity -->
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:theme="@style/Theme.ComicInk.EInk" />
+
     </application>
 
 </manifest>
